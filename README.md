@@ -27,6 +27,10 @@ npm run dev
 
 Open `http://localhost:3000`. Register with an allowlisted email.
 
-## Scope v1
+## belum final build masih landing page dashboard sederhana aja
 
-Landing, password auth + optional Link Google, dashboard shell, custom tasks. No Classroom turn-in, no Gmail/Calendar read, no OCR, no votes. See `CONTRACT.md`, `PRODUCT.md`, `DESIGN.md`.
+<img width="1707" height="922" alt="image" src="https://github.com/user-attachments/assets/3f3ab75d-26a4-4fad-a7a7-22a94d7076d4" />
+tampilan homepage singkat
+
+tampilan register
+<img width="1711" height="1027" alt="image" src="https://github.com/user-attachments/assets/74ee2c64-c696-4c23-b7de-b36229b23dcb" />
