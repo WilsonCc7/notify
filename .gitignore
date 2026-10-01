@@ -1,0 +1,30 @@
+# secrets: never commit
+.env
+.env.*
+!.env.example
+
+# next
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# deps
+node_modules/
+
+*.db
+*.db-journal
+*.pem
+*.key
+prisma/*.db
+
+# uploads / local artifacts
+uploads/
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,82 @@
+// Notify v1 — Prisma schema. Edit only: run `prisma migrate dev` / `prisma generate` when you intend to.
+// Merge rule (CONTRACT.md): Google sign-in with a verified email matching an existing user links
+// googleRefreshToken onto that row — no second user. See lib/auth.ts sameEmailLink().
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                  String       @id @default(cuid())
+  email               String       @unique
+  name                String
+  avatar              String?
+  passwordHash        String?
+  googleRefreshToken  String?
+  createdAt           DateTime     @default(now())
+  task_state          task_state[]
+  posts               posts[]
+  replies             replies[]
+}
+
+model courses {
+  id          String  @id @default(cuid())
+  classroomId String  @unique
+  name        String
+  section     String?
+  room        String?
+  tasks       tasks[]
+}
+
+model tasks {
+  id                       String      @id @default(cuid())
+  source                   String // "classroom" | "custom" — see lib/contract.ts TaskSource
+  courseId                 String?
+  course                   courses?    @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  classroomCourseworkId    String?     @unique
+  title                    String
+  description              String?
+  dueAt                    DateTime?
+  createdAt                DateTime    @default(now())
+  task_state               task_state[]
+  posts                    posts[]
+}
+
+model task_state {
+  userId  String
+  taskId  String
+  user    users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task    tasks    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  status  String // "todo" | "doing" | "done" — see lib/contract.ts TaskStatus
+
+  @@id([userId, taskId])
+}
+
+model posts {
+  id        String    @id @default(cuid())
+  taskId    String
+  task      tasks     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    users     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  bodyText  String?
+  imageUrl  String? // R2/S3 key or URL — 5MB cap, server upload, no base64
+  linkUrl   String?
+  createdAt DateTime  @default(now())
+  replies   replies[]
+}
+
+model replies {
+  id        String   @id @default(cuid())
+  postId    String
+  post      posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    users    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  bodyText  String
+  linkUrl   String?
+  createdAt DateTime @default(now())
+}
