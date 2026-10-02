@@ -53,7 +53,12 @@ function parseDue(v: unknown): Date | null | "bad" {
   if (v === undefined || v === null || v === "") return null;
   if (typeof v !== "string") return "bad";
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? "bad" : d;
+  // JS Date clamps out-of-range input into a valid timestamp Postgres rejects
+  // (500 on write). Years outside 1900-2100 are never a real due date.
+  if (Number.isNaN(d.getTime())) return "bad";
+  const year = d.getUTCFullYear();
+  if (year < 1900 || year > 2100) return "bad";
+  return d;
 }
 
 export async function GET() {
