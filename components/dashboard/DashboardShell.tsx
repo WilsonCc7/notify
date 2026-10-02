@@ -9,6 +9,7 @@ import { CompletedArt, OverdueArt, UpcomingArt } from "@/components/icons/EmptyA
 import type { SessionUser } from "@/lib/session";
 import type { Task } from "@/lib/contract";
 import { TaskRow } from "@/components/dashboard/TaskRow";
+import { CountsRow, UpNext } from "@/components/dashboard/Widgets";
 import { CreateTaskForm } from "@/components/dashboard/CreateTaskForm";
 import { apiError } from "@/components/dashboard/api";
 type Tab = "upcoming" | "overdue" | "completed";
@@ -90,11 +91,24 @@ export function DashboardShell({ user }: { user: SessionUser }) {
   const dueSoon = all
     .filter((t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! - now < SOON_MS)
     .slice(0, 5);
+  const due48Count = all.filter(
+    (t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! - now >= 0 && dueTime(t)! - now < SOON_MS,
+  ).length;
   const lists: Record<Tab, Task[]> = {
     upcoming: all.filter((t) => t.status !== "done" && (dueTime(t) === null || dueTime(t)! >= now)),
     overdue: all.filter((t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! < now),
     completed: all.filter((t) => t.status === "done"),
   };
+  const undone = all.filter((t) => t.status !== "done");
+  const upNext =
+    undone.slice().sort((a, b) => {
+      const da = dueTime(a);
+      const db = dueTime(b);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    })[0] ?? null;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -154,6 +168,15 @@ export function DashboardShell({ user }: { user: SessionUser }) {
             </p>
           </div>
         </FadeRise>
+
+        {tasks === null ? (
+          <Skeleton rows={2} />
+        ) : (
+          <FadeRise delay={0.015} className="grid gap-6 lg:grid-cols-2">
+            <UpNext task={upNext} />
+            <CountsRow todo={undone.length} due48={due48Count} done={lists.completed.length} />
+          </FadeRise>
+        )}
 
         {user.googleLinked ? null : (
           <FadeRise
@@ -222,11 +245,10 @@ export function DashboardShell({ user }: { user: SessionUser }) {
                   type="button"
                   aria-pressed={tab === id}
                   onClick={() => setTab(id)}
-                  className={`min-h-11 rounded-pill px-4 text-sm font-medium transition-colors ${
-                    tab === id
-                      ? "bg-accent text-white"
-                      : "border border-line bg-surface text-muted hover:bg-zinc-50"
-                  }`}
+                  className={`min-h-11 rounded-pill px-4 text-sm font-medium transition-colors ${tab === id
+                    ? "bg-accent text-white"
+                    : "border border-line bg-surface text-muted hover:bg-zinc-50"
+                    }`}
                 >
                   {label}
                   {tasks ? ` (${lists[id].length})` : ""}
