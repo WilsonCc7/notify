@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthSplit } from "@/components/auth/AuthSplit";
 import { Alert, Field } from "@/components/auth/Field";
 
@@ -10,10 +10,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const ERROR_COPY: Record<string, string> = {
   invalid_credentials: "Email or password is wrong.",
+  google_denied: "Google sign in was cancelled. Try again or use your password.",
+  invalid_state: "Google sign in expired. Try again from the dashboard.",
+  exchange_failed: "Google did not return an account. Try again.",
+  google_unconfigured: "Google sign in is not set up yet. Use your password.",
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const googleError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -62,6 +68,9 @@ export default function LoginPage() {
     <AuthSplit title="Welcome back" subtitle="Sign in to see what is due.">
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {formError ? <Alert title={formError} /> : null}
+        {!formError && googleError && ERROR_COPY[googleError] ? (
+          <Alert title={ERROR_COPY[googleError]} />
+        ) : null}
 
         {blocked ? (
           <Alert title="That email is not on the list yet.">
@@ -128,5 +137,13 @@ export default function LoginPage() {
         </p>
       </form>
     </AuthSplit>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

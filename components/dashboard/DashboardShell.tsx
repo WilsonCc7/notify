@@ -64,8 +64,10 @@ function Skeleton({ rows }: { rows: number }) {
 export function DashboardShell({ user }: { user: SessionUser }) {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<Tab>("upcoming");
+  const [pendingSync, setPendingSync] = useState(false);
   const reduced = useReducedMotion();
 
   const load = useCallback(async () => {
@@ -82,9 +84,38 @@ export function DashboardShell({ user }: { user: SessionUser }) {
     }
   }, []);
 
+  // Runs after load(), never before it: a failed pull must not empty the board the user is
+  // already looking at, it only gets a line of inline copy.
+  const sync = useCallback(async () => {
+    const res = await fetch("/api/sync/classroom", { method: "POST" });
+    if (!res.ok) {
+      setSyncError("Classroom sync failed, try Refresh again.");
+      return;
+    }
+    setSyncError(null);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    await load();
+    if (user.googleLinked) await sync();
+  }, [load, sync, user.googleLinked]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    // /?sync=1 is what the Google callback redirects to: link just stored a refresh token, so
+    // pull coursework once before the user sees the board. Unlinked accounts have nothing to
+    // pull, and the flag is dropped afterwards so a reload does not re-trigger it.
+    if (!user.googleLinked || new URLSearchParams(window.location.search).get("sync") !== "1") {
+      load();
+      return;
+    }
+    setPendingSync(true);
+    void load()
+      .then(sync)
+      .finally(() => {
+        setPendingSync(false);
+        window.history.replaceState(null, "", "/");
+      });
+  }, [load, sync, user.googleLinked]);
 
   const now = Date.now();
   const all = tasks ?? [];
@@ -130,12 +161,12 @@ export function DashboardShell({ user }: { user: SessionUser }) {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={load}
+                onClick={refresh}
                 disabled={refreshing}
                 className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line bg-surface px-4 text-sm font-medium text-ink hover:bg-zinc-50 disabled:opacity-60 sm:min-h-10"
               >
                 <ArrowsClockwise size={20} />
-                {refreshing ? "Refreshing" : "Refresh"}
+                {refreshing || pendingSync ? "Refreshing" : "Refresh"}
               </button>
               <button
                 type="button"
@@ -189,14 +220,13 @@ export function DashboardShell({ user }: { user: SessionUser }) {
                 Link Google to pull coursework from Google Classroom. Custom tasks work right now.
               </p>
             </div>
-            <button
-              type="button"
-              disabled
-              className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-pill border border-line bg-zinc-100 px-5 text-sm font-medium text-muted disabled:cursor-not-allowed sm:justify-self-end"
+            <a
+              href="/api/auth/google/start"
+              className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-pill border border-line bg-surface px-5 text-sm font-medium text-ink hover:bg-zinc-50 sm:min-h-10 sm:justify-self-end"
             >
               <GoogleLogo size={20} />
               Link Google
-            </button>
+            </a>
           </FadeRise>
         )}
 
@@ -208,6 +238,12 @@ export function DashboardShell({ user }: { user: SessionUser }) {
         {error ? (
           <p role="alert" className="text-sm text-rose-600">
             {error}
+          </p>
+        ) : null}
+
+        {syncError ? (
+          <p role="alert" className="text-sm text-rose-600">
+            {syncError}
           </p>
         ) : null}
 
