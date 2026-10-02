@@ -7,6 +7,7 @@ export type Task = {
   id: string;
   source: TaskSource;
   courseId: string | null;
+  courseLabel?: string | null; // free-text label typed by the user; null is the "Unfiled" board
   classroomCourseworkId?: string;
   title: string;
   description?: string;

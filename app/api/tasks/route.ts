@@ -12,6 +12,7 @@ type Row = {
   source: string;
   courseId: string | null;
   classroomCourseworkId: string | null;
+  courseLabel: string | null;
   title: string;
   description: string | null;
   dueAt: Date | null;
@@ -23,6 +24,7 @@ const toTask = (r: Row): Task => ({
   id: r.id,
   source: r.source as TaskSource,
   courseId: r.courseId,
+  courseLabel: r.courseLabel ?? null,
   classroomCourseworkId: r.classroomCourseworkId ?? undefined,
   title: r.title,
   description: r.description ?? undefined,
@@ -83,6 +85,9 @@ export async function POST(req: Request) {
     const course = await prisma.courses.findUnique({ where: { id: courseId }, select: { id: true } });
     if (!course) return fail("That course does not exist.", 400);
   }
+  // Free text typed by the user. Blank collapses to null so the board's "Unfiled"
+  // bucket stays a single is-null query instead of an empty-string special case.
+  const courseLabel = typeof b.courseLabel === "string" ? b.courseLabel.trim() || null : null;
 
   const row = await prisma.tasks.create({
     data: {
@@ -91,6 +96,7 @@ export async function POST(req: Request) {
       description: description || null,
       dueAt,
       courseId,
+      courseLabel,
       task_state: { create: { userId: user.id, status: "todo" } },
     },
     include: { task_state: { where: { userId: user.id } } },
@@ -106,7 +112,8 @@ export async function PATCH(req: Request) {
   const b = await body(req);
   const id = typeof b.id === "string" ? b.id : "";
   if (!id) return fail("Missing task id.", 400);
-  if (!isStatus(b.status)) return fail("Status must be todo, doing, or done.", 400);
+  if (b.status !== undefined && !isStatus(b.status)) return fail("Status must be todo, doing, or done.", 400);
+  if (b.status === undefined && b.courseLabel === undefined) return fail("Nothing to update.", 400);
 
   const task = await prisma.tasks.findUnique({
     where: { id },
@@ -114,11 +121,21 @@ export async function PATCH(req: Request) {
   });
   if (!task) return fail("That task no longer exists.", 404);
 
-  await prisma.task_state.upsert({
-    where: { userId_taskId: { userId: user.id, taskId: id } },
-    create: { userId: user.id, taskId: id, status: b.status },
-    update: { status: b.status },
-  });
+  if (b.status !== undefined) {
+    await prisma.task_state.upsert({
+      where: { userId_taskId: { userId: user.id, taskId: id } },
+      create: { userId: user.id, taskId: id, status: b.status },
+      update: { status: b.status },
+    });
+  }
+
+  if (b.courseLabel !== undefined) {
+    // Same trim rule as POST: blank unfiles the task.
+    await prisma.tasks.update({
+      where: { id },
+      data: { courseLabel: typeof b.courseLabel === "string" ? b.courseLabel.trim() || null : null },
+    });
+  }
 
   const row = await prisma.tasks.findUniqueOrThrow({
     where: { id },

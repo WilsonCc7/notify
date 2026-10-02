@@ -38,6 +38,7 @@ model tasks {
   source                   String // "classroom" | "custom" — see lib/contract.ts TaskSource
   courseId                 String?
   course                   courses?    @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseLabel              String?     // free-text label typed by the user; null is the "Unfiled" board
   classroomCourseworkId    String?     @unique
   title                    String
   description              String?

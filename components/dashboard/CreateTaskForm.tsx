@@ -29,6 +29,7 @@ function DueHint() {
 export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<void> }) {
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [courseLabel, setCourseLabel] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -51,6 +52,7 @@ export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<
           title: title.trim(),
           description: description.trim() || undefined,
           dueAt: dueAt || undefined,
+          courseLabel: courseLabel.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error(await apiError(res, "Could not add that task."));
@@ -58,6 +60,7 @@ export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<
       setTitle("");
       setDueAt("");
       setDescription("");
+      setCourseLabel("");
       await onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add that task.");
@@ -68,7 +71,7 @@ export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<
 
   return (
     <form onSubmit={submit} noValidate className="grid gap-3">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem_11rem]">
         <div>
           <label htmlFor="task-title" className="sr-only">
             Task title
@@ -81,6 +84,19 @@ export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<
             disabled={saving}
             aria-invalid={error !== null}
             aria-describedby={error ? "task-error" : undefined}
+            className="min-h-11 w-full rounded-input border border-line bg-surface px-3 text-base text-ink placeholder:text-muted disabled:opacity-50"
+          />
+        </div>
+        <div>
+          <label htmlFor="task-label" className="sr-only">
+            Course label
+          </label>
+          <input
+            id="task-label"
+            value={courseLabel}
+            onChange={(e) => setCourseLabel(e.target.value)}
+            placeholder="Course label"
+            disabled={saving}
             className="min-h-11 w-full rounded-input border border-line bg-surface px-3 text-base text-ink placeholder:text-muted disabled:opacity-50"
           />
         </div>
