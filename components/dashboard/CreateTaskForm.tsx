@@ -4,6 +4,28 @@ import { useState } from "react";
 import { Plus } from "@phosphor-icons/react";
 import { apiError } from "@/components/dashboard/api";
 
+function DueHint() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="#0EA5E9"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+    >
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+
 export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<void> }) {
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
@@ -62,18 +84,18 @@ export function CreateTaskForm({ onCreated }: { onCreated: () => void | Promise<
             className="min-h-11 w-full rounded-input border border-line bg-surface px-3 text-base text-ink placeholder:text-muted disabled:opacity-50"
           />
         </div>
-
-        <div>
+        <div className="relative">
           <label htmlFor="task-due" className="sr-only">
             Due date
           </label>
+          <DueHint />
           <input
             id="task-due"
             type="date"
             value={dueAt}
             onChange={(e) => setDueAt(e.target.value)}
             disabled={saving}
-            className="min-h-11 w-full rounded-input border border-line bg-surface px-3 text-base text-ink disabled:opacity-50"
+            className="min-h-11 w-full rounded-input border border-line bg-surface px-3 pl-10 text-base text-ink disabled:opacity-50"
           />
         </div>
       </div>

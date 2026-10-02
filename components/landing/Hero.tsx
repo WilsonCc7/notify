@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
-import { Check } from "@phosphor-icons/react/dist/ssr/Check";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle";
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock";
-import { GoogleLogo } from "@phosphor-icons/react/dist/ssr/GoogleLogo";
+import { FloatCard } from "./FloatCard";
+import {
+  AssignmentFile,
+  ClassroomCap,
+  QuizCheck,
+} from "@/components/icons/TaskGlyphs";
 import { FadeRise } from "./FadeRise";
 import { buttonPrimary, cardLift, cardShadow, eyebrow } from "./ui";
 
@@ -14,6 +18,22 @@ function DueTaskCard({ className = "" }: { className?: string }) {
         <Clock size={16} weight="bold" className="text-accent" />
         Due today
       </p>
+      <div className="mt-4 flex items-center gap-3 rounded-input border border-line bg-bg p-2">
+        <svg
+          viewBox="0 0 168 44"
+          role="img"
+          aria-label="Calendar week with today marked"
+          className="h-11 w-full"
+        >
+          <rect width="168" height="44" rx="8" fill="#0EA5E9" opacity="0.12" />
+          {[12, 38, 64, 90, 116, 142].map((x) => (
+            <rect key={x} x={x} y="12" width="14" height="20" rx="4" fill="#0EA5E9" opacity="0.28" />
+          ))}
+          <rect x="116" y="12" width="14" height="20" rx="4" fill="#F59E0B" opacity="0.45" />
+          <circle cx="123" cy="7" r="4" fill="#F59E0B" />
+        </svg>
+        <QuizCheck size={20} className="shrink-0 text-muted" />
+      </div>
       <div className="mt-4 flex items-center gap-3 rounded-input border border-line p-3">
         <CheckCircle size={20} weight="fill" className="text-muted" />
         <span className="text-sm font-medium text-ink">Problem set 3</span>
@@ -29,14 +49,14 @@ function ClassroomCard({ className = "" }: { className?: string }) {
   return (
     <div className={`rounded-card border border-line bg-surface p-5 ${cardShadow} ${className}`}>
       <p className="flex items-center gap-2 text-sm font-medium text-ink">
-        <GoogleLogo size={16} weight="bold" className="text-muted" />
+        <ClassroomCap size={16} className="text-muted" />
         From Classroom
       </p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         Link Google once and your coursework lands here on its own.
       </p>
       <div className="mt-4 flex items-center gap-2 text-sm text-muted">
-        <Check size={16} weight="bold" className="text-accent" />
+        <AssignmentFile size={16} className="text-accent" />
         Lab report
         <span className="ml-auto text-xs">Added for you</span>
       </div>
@@ -74,10 +94,14 @@ export function Hero() {
 
           <div className="hidden sm:block md:-mr-6 lg:-mr-10">
             <FadeRise delay={0.03}>
-              <DueTaskCard className={`-rotate-2 ${cardLift}`} />
+              <FloatCard>
+                <DueTaskCard className={`-rotate-2 ${cardLift}`} />
+              </FloatCard>
             </FadeRise>
             <FadeRise delay={0.06} className="-mt-10 ml-8 lg:ml-16">
-              <ClassroomCard className={`rotate-2 ${cardLift}`} />
+              <FloatCard delay={0.6}>
+                <ClassroomCard className={`rotate-2 ${cardLift}`} />
+              </FloatCard>
             </FadeRise>
           </div>
 

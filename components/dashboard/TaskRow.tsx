@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { CheckCircle, Circle, EnvelopeSimple, Trash } from "@phosphor-icons/react";
-import type { Task, TaskStatus } from "@/lib/contract";
+import { AssignmentFile, ClassroomCap } from "@/components/icons/TaskGlyphs";
+import type { Task, TaskSource, TaskStatus } from "@/lib/contract";
 import { apiError } from "@/components/dashboard/api";
+
+function SourceGlyph({ source }: { source: TaskSource }) {
+  const Glyph = source === "classroom" ? ClassroomCap : AssignmentFile;
+  return <Glyph size={16} className="shrink-0 text-muted" />;
+}
 
 const STATUSES: TaskStatus[] = ["todo", "doing", "done"];
 
@@ -21,6 +28,8 @@ export function TaskRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const reduced = useReducedMotion();
 
   const done = task.status === "done";
   const due = task.dueAt ? new Date(task.dueAt) : null;
@@ -77,16 +86,24 @@ export function TaskRow({
         aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
         className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-accent disabled:opacity-50 sm:size-10"
       >
-        {done ? (
-          <CheckCircle size={24} weight="fill" className="text-accent" />
-        ) : (
-          <Circle size={24} />
-        )}
+        <motion.span
+          initial={false}
+          animate={reduced ? { scale: 1 } : done ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="grid place-items-center"
+        >
+          {done ? (
+            <CheckCircle size={24} weight="fill" className="text-accent" />
+          ) : (
+            <Circle size={24} />
+          )}
+        </motion.span>
       </button>
 
       <div className="min-w-0">
-        <p className={done ? "truncate text-base text-muted line-through" : "truncate text-base font-medium text-ink"}>
-          {task.title}
+        <p className={`flex items-center gap-2 text-base ${done ? "text-muted line-through" : "font-medium text-ink"}`}>
+          <SourceGlyph source={task.source} />
+          <span className="truncate">{task.title}</span>
         </p>
         {task.description ? (
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{task.description}</p>
@@ -95,7 +112,20 @@ export function TaskRow({
 
       <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-auto">
         {task.dueAt ? (
-          <span className={`rounded-pill px-2.5 py-1 text-xs font-medium ${tone}`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium ${tone}`}>
+            {overdue ? (
+              <span className="relative grid size-2 place-items-center">
+                <span className="size-2 rounded-full bg-rose-500" />
+                {reduced ? null : (
+                  <motion.span
+                    className="absolute size-2 rounded-full bg-rose-500"
+                    initial={{ scale: 1, opacity: 0.55 }}
+                    animate={{ scale: 2.4, opacity: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                )}
+              </span>
+            ) : null}
             {overdue ? "Overdue " : soon ? "Due " : ""}
             {day(task.dueAt)}
           </span>

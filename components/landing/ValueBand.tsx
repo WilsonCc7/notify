@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle";
-import { GoogleLogo } from "@phosphor-icons/react/dist/ssr/GoogleLogo";
-import { ListChecks } from "@phosphor-icons/react/dist/ssr/ListChecks";
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
+import { AssignmentFile, ClassroomCap } from "@/components/icons/TaskGlyphs";
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { FadeRise } from "./FadeRise";
 import { cardShadow, eyebrow } from "./ui";
 
 const features = [
   {
-    icon: ListChecks,
+    icon: AssignmentFile,
     title: "Everything due, soonest first",
     body: "One list for every course you are in. Each task keeps its title, its note, and its due date.",
   },
@@ -106,10 +105,7 @@ export function ValueBand() {
                   </span>
                 </li>
                 <li className="flex gap-3 rounded-input border border-line p-3">
-                  <GoogleLogo
-                    size={20}
-                    className="shrink-0 text-muted"
-                  />
+                  <ClassroomCap size={20} className="shrink-0 text-muted" />
                   <span className="text-sm leading-relaxed text-muted">
                     Link Google once and your Classroom coursework comes over on
                     its own.

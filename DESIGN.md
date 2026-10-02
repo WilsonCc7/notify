@@ -121,7 +121,66 @@ Fail the build on any of these.
 6. **No scroll cues**, no version labels, no `BRAND MOTION SPATIAL` text strips, no decorative dot rows, no section-number eyebrows (`01 / Overview`).
 7. **No emoji in copy or UI.** Phosphor only.
 8. **One theme.** Light only in v1. No section that flips to a dark band mid-page.
-9. **One accent.** No per-section accent swap, no second accent for "success".
+9. **One accent.** No per-section accent swap, no second accent for "success". Exception: the illustration palette in section 5, used only inside SVG art and status chips.
 10. **CTAs**: label must fit one line at desktop, 3 words max, WCAG AA contrast. No white text on white, no transparent button without a border.
 11. **No duplicate CTA intent** on one screen.
 12. **Every list has real states**: loading skeleton matching final layout, empty state that says what to do next, inline form errors. No spinner-only screens.
+
+## 5. Illustration palette
+
+Four hues, decorative and semantic-adjacent only. They extend the status chip language into SVG art, nothing else.
+
+| Name | Value | Use |
+| --- | --- | --- |
+| amber | `#F59E0B` | due soon accents in art, due soon chip |
+| sky | `#0EA5E9` | calendar and planning accents in art, in-progress chip |
+| emerald | `#10B981` | done and streak accents in art, done chip |
+| rose | `#F43F5E` | overdue accents in art, overdue chip |
+
+Rules:
+- Illustration palette appears in SVG art fills and strokes, status chips, and small status dots. Nowhere else.
+- Never on a CTA: primary CTA stays `--color-accent` `#2563EB` with no variation.
+- Never as a card, panel, or section background. Surfaces stay `--color-surface` / `--color-canvas`.
+- Never as text color, including links, headings, eyebrows, and helper copy.
+- Max 2 illustration hues per SVG file. Three or more reads as a gradient mesh and breaks the calm.
+- Blue `#2563EB` stays the sole interactive accent: links, focus rings, active states, primary buttons, progress fill. Nothing interactive is ever amber, sky, emerald, or rose.
+- Illustration hues never pair with blue in the same interactive element.
+
+## 6. Motion spec
+
+Four motions ship in v1. Anything else is out of scope.
+
+### Hero float
+
+Landing hero floating cards only.
+- Property: `y` from `-6` to `6` to `-6` (translateY, 6px amplitude).
+- Duration `6s`, easing `easeInOut`, `repeat: Infinity`.
+- Delay staggered per card, step `0.6s` (card 1 `0s`, card 2 `0.6s`).
+- Reduced motion: no animation, static card at its base offset.
+
+### List entry
+
+Dashboard rows and landing list items.
+- Property: `opacity 0` to `1` plus `y: 8` to `0`.
+- Duration `180ms`, ease out. Stagger `30ms` per index, runs once.
+- Reduced motion: plain opacity fade, no translate.
+
+### Status tick
+
+When a checkbox, chip, or dot changes to done.
+- Property: `scale 1` to `1.15` to `1`.
+- Duration `200ms`, ease-out tween (motion spring supports only 2 keyframes, so 3-frame tick uses tween).
+- Reduced motion: no animation, state swaps instantly.
+
+### Tab switch
+
+Subject or mode tabs.
+- Property: `opacity` only, `120ms`, linear.
+- No slide, no scale, no height animation.
+
+Rules:
+- All motion runs through `motion/react` and only inside client components. A `motion.*` or `AnimatePresence` import marks a client leaf; never mark a server component `use client`.
+- No page transitions between routes.
+- No scroll hijack: no scroll snapping, no scroll-driven parallax, no scroll-triggered reveals, no pinned sections.
+- No route transition animation on navigation.
+- Every motion above is gated by `prefers-reduced-motion: reduce` per its rule above.

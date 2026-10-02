@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ComponentType } from "react";
+
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowsClockwise, GoogleLogo, SignOut } from "@phosphor-icons/react";
 import { FadeRise } from "@/components/landing/FadeRise";
+import { CompletedArt, OverdueArt, UpcomingArt } from "@/components/icons/EmptyArt";
 import type { SessionUser } from "@/lib/session";
 import type { Task } from "@/lib/contract";
 import { TaskRow } from "@/components/dashboard/TaskRow";
@@ -21,6 +24,22 @@ const EMPTY: Record<Tab, string> = {
   overdue: "Nothing overdue. You are caught up.",
   completed: "Nothing completed yet. Tick a task when it is done.",
 };
+
+const EMPTY_ART: Record<Tab, ComponentType<{ className?: string }>> = {
+  upcoming: UpcomingArt,
+  overdue: OverdueArt,
+  completed: CompletedArt,
+};
+
+function EmptyState({ tab }: { tab: Tab }) {
+  const Art = EMPTY_ART[tab];
+  return (
+    <div className="grid justify-items-center gap-3">
+      <Art className="h-24 w-auto" />
+      <p className="text-base leading-relaxed text-muted">{EMPTY[tab]}</p>
+    </div>
+  );
+}
 
 const SOON_MS = 48 * 3600 * 1000;
 const CARD =
@@ -46,6 +65,8 @@ export function DashboardShell({ user }: { user: SessionUser }) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<Tab>("upcoming");
+  const reduced = useReducedMotion();
+
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -168,7 +189,7 @@ export function DashboardShell({ user }: { user: SessionUser }) {
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <FadeRise delay={0.09} className={CARD}>
+          <FadeRise delay={0.09} className={`${CARD} border-l-2 border-l-sky-500`}>
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-ink">Due soon</h2>
               <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
@@ -208,21 +229,30 @@ export function DashboardShell({ user }: { user: SessionUser }) {
                   }`}
                 >
                   {label}
-                  {tasks ? ` ${lists[id].length}` : ""}
+                  {tasks ? ` (${lists[id].length})` : ""}
                 </button>
               ))}
             </div>
 
             {tasks === null ? (
               <Skeleton rows={3} />
-            ) : lists[tab].length === 0 ? (
-              <p className="text-base leading-relaxed text-muted">{EMPTY[tab]}</p>
             ) : (
-              <ul className="divide-y divide-zinc-100">
-                {lists[tab].map((t) => (
-                  <TaskRow key={t.id} task={t} onChange={load} />
-                ))}
-              </ul>
+              <motion.div
+                key={tab}
+                initial={{ opacity: reduced ? 1 : 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.12, ease: "linear" }}
+              >
+                {lists[tab].length === 0 ? (
+                  <EmptyState tab={tab} />
+                ) : (
+                  <ul className="divide-y divide-zinc-100">
+                    {lists[tab].map((t) => (
+                      <TaskRow key={t.id} task={t} onChange={load} />
+                    ))}
+                  </ul>
+                )}
+              </motion.div>
             )}
           </FadeRise>
         </div>
