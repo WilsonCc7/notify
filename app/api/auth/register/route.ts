@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "invalid_email" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") return Response.json({ error: "invalid_email" }, { status: 400 });
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";

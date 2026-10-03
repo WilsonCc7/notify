@@ -11,7 +11,8 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "invalid_credentials" }, { status: 401 });
   }
-
+  if (!body || typeof body !== "object")
+    return Response.json({ error: "invalid_credentials" }, { status: 401 });
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
 
