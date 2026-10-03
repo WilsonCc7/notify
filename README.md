@@ -1,11 +1,11 @@
 # Notify
 
-One calm place for coursework, notes, and due dates. Closed group planner: Classroom tasks land on their own, custom tasks take seconds, each task carries its own help thread.
+One calm place for coursework, notes, and due dates. Open planner: anyone registers with an email, Classroom tasks land on their own, custom tasks take seconds, each task carries its own help thread.
 
 ## User flow
 
 1. Open `/`. Logged out sees landing, one button to register.
-2. `/register` email + name + password. Email must sit in `ALLOWED_EMAILS` or you land on `/blocked`.
+2. `/register` email + name + password. Any valid email works.
 3. `/` authed shows dashboard: greeting, due soon, To do with Upcoming / Overdue / Completed tabs.
 4. Add custom task via New task form. Tick checkbox or change status select. Delete with row action.
 5. Unlinked banner prompts Link Google. Linked users pull Classroom courses on login + Refresh. Gmail stays a deep link, no extra scopes.
@@ -16,7 +16,7 @@ One calm place for coursework, notes, and due dates. Closed group planner: Class
 git clone https://github.com/WilsonCc7/notify.git
 cd notify
 cp .env.example .env
-# fill DATABASE_URL, ALLOWED_EMAILS, SESSION_SECRET
+# fill DATABASE_URL, SESSION_SECRET
 docker run -d --name notify-postgres \
   -e POSTGRES_USER=notify -e POSTGRES_PASSWORD=notify \
   -e POSTGRES_DB=notify -p 5432:5432 postgres:16
@@ -25,7 +25,7 @@ npx prisma migrate dev
 npm run dev
 ```
 
-Open `http://localhost:3000`. Register with an allowlisted email.
+Open `http://localhost:3000`. Register with any email.
 
 ## belum final build masih landing page dashboard sederhana aja
 

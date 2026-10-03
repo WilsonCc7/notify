@@ -21,13 +21,11 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [blocked, setBlocked] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
-    setBlocked(false);
 
     const trimmed = email.trim();
     const next: typeof errors = {};
@@ -48,10 +46,6 @@ export default function RegisterPage() {
         }),
       });
 
-      if (res.status === 403) {
-        setBlocked(true);
-        return;
-      }
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         setFormError(ERROR_COPY[body?.error ?? ""] ?? "That did not work. Try again.");
@@ -70,17 +64,6 @@ export default function RegisterPage() {
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {formError ? <Alert title={formError} /> : null}
 
-        {blocked ? (
-          <Alert title="That email is not on the list yet.">
-            <p>
-              Notify is invite only.{" "}
-              <Link href="/blocked" className="font-medium text-ink underline underline-offset-2">
-                See why
-              </Link>
-              .
-            </p>
-          </Alert>
-        ) : null}
 
         <Field
           label="Email"

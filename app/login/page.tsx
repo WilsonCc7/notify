@@ -24,13 +24,11 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [blocked, setBlocked] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
-    setBlocked(false);
 
     const trimmed = email.trim();
     const next: typeof errors = {};
@@ -47,10 +45,6 @@ function LoginForm() {
         body: JSON.stringify({ email: trimmed, password }),
       });
 
-      if (res.status === 403) {
-        setBlocked(true);
-        return;
-      }
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         setFormError(ERROR_COPY[body?.error ?? ""] ?? "That did not work. Try again.");
@@ -70,28 +64,6 @@ function LoginForm() {
         {formError ? <Alert title={formError} /> : null}
         {!formError && googleError && ERROR_COPY[googleError] ? (
           <Alert title={ERROR_COPY[googleError]} />
-        ) : null}
-
-        {blocked ? (
-          <Alert title="That email is not on the list yet.">
-            <p>
-              Notify is invite only.{" "}
-              <Link
-                href="/blocked"
-                className="font-medium text-ink underline underline-offset-2"
-              >
-                See why
-              </Link>
-              , or{" "}
-              <Link
-                href="/register"
-                className="font-medium text-ink underline underline-offset-2"
-              >
-                create an account
-              </Link>
-              .
-            </p>
-          </Alert>
         ) : null}
 
         <Field

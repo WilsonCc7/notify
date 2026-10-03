@@ -1,10 +1,10 @@
 # PRODUCT.md - Notify v1
 
-Notify is a private planner for a small, closed group of students. Not a school tool, not a marketplace, not a productivity suite. A handful of people who need one shared list of what is due and what they already finished.
+Notify is an open planner for students. Not a school tool, not a marketplace, not a productivity suite. Anyone with an email can register and keep one shared list of what is due and what they already finished.
 
 ## 1. Users
 
-- **Closed friend group.** Enrollment is invitation-scoped via `ALLOWED_EMAILS`. Anyone outside that list hits a blocked page on both password signup and Google login. No open signup, no waitlist, no "request access" funnel.
+- **Open signup.** Anyone with a valid email address registers, no invitation needed.
 - **Student, not administrator.** One identity, one password. No roles, no seats, no workspace management.
 - **Google Classroom user.** If the group already lives in Classroom, coursework should land in Notify on its own, not be retyped.
 - **Small scale.** Tens of users, hundreds of tasks. Single Postgres, no queue, no cron sync, no cache tier.
@@ -21,7 +21,7 @@ Two paths, one identity.
 
 - **Password register and login.** Email + password, argon2 hash, server-set session cookie. This is the primary path.
 - **Link Google.** Optional per user, requested only when the user chooses to pull Classroom data or share Google identity.
-- **Gate.** `ALLOWED_EMAILS` gates both paths. No email in the list means blocked page, not a generic "try again".
+- **No gate.** Both paths accept any valid email. Google identity is verified by Google, password identity by argon2.
 - **Merge rule.** Same verified email auto-links. Google login matching an existing password account attaches the Google refresh token to that user row. Never creates a second user.
 - **Unlinked users** get custom tasks only. Any Classroom surface shows a Link Google prompt instead of data or an error.
 - **Scopes, only on link or sync:** `openid email profile classroom.courses.readonly classroom.coursework.me.readonly`. No Gmail, no Calendar, no Drive, not even readonly.
@@ -32,7 +32,7 @@ Two paths, one identity.
 This phase ships four things:
 
 1. **Landing `/`** for logged-out visitors: what Notify is, one primary CTA to register, one to sign in. See DESIGN.md section 2 for the Persuade mode.
-2. **Auth screens `/register` and `/login`**: split layout, form on the left, illustration or product shot on the right, blocked page for non-allowlisted emails.
+2. **Auth screens `/register` and `/login`**: split layout, form on the left, illustration or product shot on the right.
 3. **Dashboard shell `/` when authed**: greeting, due-soon list, custom task list, per-subject entry points, refresh button, Link Google affordance. This is a shell plus custom tasks, no Classroom data in this phase.
 4. **Custom tasks**: create, edit, complete, delete, optionally due date and course. Usable by an unlinked user from minute one.
 

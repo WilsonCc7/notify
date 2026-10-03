@@ -1,5 +1,5 @@
 // Auth helpers. Password hashing is argon2id via the `argon2` package — nothing else
-// (no scrypt/bcrypt). Gate + cookie config live here; routes live in app/api/auth/*.
+// (no scrypt/bcrypt). Session cookie config lives here; routes live in app/api/auth/*.
 import { hash, verify } from "argon2";
 import { prisma } from "@/lib/db";
 
@@ -22,20 +22,6 @@ export async function verifyPassword(digest: string, password: string): Promise<
   } catch {
     return false; // malformed hash / wrong algo — not a match, never a 500
   }
-}
-
-// ALLOWED_EMAILS gates BOTH password signup and Google login. Unset/blank => nobody
-// passes: fail closed.
-export function getAllowedEmails(): string[] {
-  return (process.env.ALLOWED_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isEmailAllowed(email: string): boolean {
-  const e = email.trim().toLowerCase();
-  return e !== "" && getAllowedEmails().includes(e);
 }
 
 export const SESSION_COOKIE = "notify_session";

@@ -1,7 +1,7 @@
 // One message for every failure (unknown email, no password set, wrong password) so the
-// endpoint cannot be used to enumerate members. Codes: invalid_credentials, blocked.
+// endpoint cannot be used to enumerate members. Code: invalid_credentials.
 import { prisma } from "@/lib/db";
-import { isEmailAllowed, verifyPassword } from "@/lib/auth";
+import { verifyPassword } from "@/lib/auth";
 import { createSession } from "@/lib/session";
 
 export async function POST(req: Request) {
@@ -20,7 +20,6 @@ export async function POST(req: Request) {
   const ok = user?.passwordHash ? await verifyPassword(user.passwordHash, password) : false;
   if (!user || !ok) return Response.json({ error: "invalid_credentials" }, { status: 401 });
 
-  if (!isEmailAllowed(user.email)) return Response.json({ error: "blocked" }, { status: 403 });
 
   await createSession(user.id);
   return Response.json({

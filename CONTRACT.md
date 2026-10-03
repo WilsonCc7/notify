@@ -4,7 +4,7 @@ Single repo Next.js monolith. Both sessions MUST match these shapes. Change need
 
 ## Auth — hybrid (Q16B locked)
 - Password register/login (email+password argon2, session cookie) + optional Link Google.
-- `ALLOWED_EMAILS` env gates BOTH password signup and Google login. Others -> blocked page.
+- Open signup: any valid email registers; Google login creates-or-links by verified email.
 - Merge rule: same verified email auto-links; Google email matching existing user links tokens, no second user.
 - Unlinked users: custom tasks only, Classroom sections show Link Google prompt.
 - Google scopes (only on link/sync): `openid email profile classroom.courses.readonly classroom.coursework.me.readonly`
