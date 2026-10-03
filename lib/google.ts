@@ -9,8 +9,8 @@ export const GOOGLE_SCOPES = [
   "openid",
   "email",
   "profile",
-  "classroom.courses.readonly",
-  "classroom.coursework.me.readonly",
+  "https://www.googleapis.com/auth/classroom.courses.readonly",
+  "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
 ].join(" ");
 
 const CLASSROOM = "https://classroom.googleapis.com/v1";

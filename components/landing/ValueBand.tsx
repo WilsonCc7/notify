@@ -9,16 +9,19 @@ import { cardShadow, eyebrow } from "./ui";
 const features = [
   {
     icon: AssignmentFile,
+    className: "shrink-0",
     title: "Everything due, soonest first",
     body: "One list for every course you are in. Each task keeps its title, its note, and its due date.",
   },
   {
     icon: CheckCircle,
+    className: "shrink-0",
     title: "Done stays done",
     body: "Mark a task finished once. It keeps its place in your history instead of coming back tomorrow.",
   },
   {
     icon: PencilSimple,
+    className: "shrink-0",
     title: "Add your own",
     body: "Reading, a problem set, a lab writeup. Anything your classes do not track sits next to the rest.",
   },
@@ -26,7 +29,7 @@ const features = [
 
 function IconTile({ children }: { children: ReactNode }) {
   return (
-    <span className="mt-0.5 inline-flex rounded-input border border-line p-2.5 text-accent">
+    <span className="grid size-10 shrink-0 place-items-center rounded-input border border-line text-accent">
       {children}
     </span>
   );
@@ -51,7 +54,7 @@ export function ValueBand() {
               {features.map((feature) => (
                 <li key={feature.title} className="flex gap-4">
                   <IconTile>
-                    <feature.icon size={20} />
+                    <feature.icon size={20} className={feature.className} />
                   </IconTile>
                   <div>
                     <p className="text-lg font-semibold text-ink">{feature.title}</p>
@@ -66,23 +69,40 @@ export function ValueBand() {
 
           <FadeRise delay={0.03}>
             <div className={`rounded-card border border-line bg-surface p-5 ${cardShadow}`}>
-              <p className="text-sm font-medium text-ink">Due soon</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-sm font-medium text-ink">Due soon</p>
+                <p className={eyebrow}>Sample</p>
+              </div>
               <ul className="mt-4 space-y-2">
                 {[
-                  { title: "Problem set 3", meta: "Physics 101, today" },
-                  { title: "Lab report", meta: "Chemistry, Friday" },
-                  { title: "Reading notes", meta: "History, next week" },
+                  { title: "Problem set 3", meta: "Physics 101, today", dot: "bg-amber-500", done: false },
+                  { title: "Lab report", meta: "Chemistry, Friday", dot: "bg-sky-500", done: false },
+                  {
+                    title: "Reading notes",
+                    meta: "History, next week",
+                    dot: "bg-emerald-500",
+                    done: true,
+                  },
                 ].map((row) => (
                   <li
                     key={row.title}
                     className="flex items-center gap-3 rounded-input border border-line px-3 py-2.5"
                   >
+                    <span className={`size-2 shrink-0 rounded-full ${row.dot}`} />
                     <CheckCircle
                       size={20}
                       weight="fill"
-                      className="text-muted"
+                      className={row.done ? "shrink-0 text-emerald-500" : "shrink-0 text-muted"}
                     />
-                    <span className="text-sm font-medium text-ink">{row.title}</span>
+                    <span
+                      className={
+                        row.done
+                          ? "text-sm font-medium text-muted line-through"
+                          : "text-sm font-medium text-ink"
+                      }
+                    >
+                      {row.title}
+                    </span>
                     <span className="ml-auto text-xs text-muted">{row.meta}</span>
                   </li>
                 ))}
