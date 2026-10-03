@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { apiError } from "@/components/dashboard/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Task, TaskStatus } from "@/lib/contract";
 
 const STATUSES: TaskStatus[] = ["todo", "doing", "done"];
@@ -73,22 +80,28 @@ function BoardCard({
           </span>
         ) : null}
 
-        <label className="sr-only" htmlFor={`move-${task.id}`}>
+        <span id={`move-label-${task.id}`} className="sr-only">
           Status for {task.title}
-        </label>
-        <select
-          id={`move-${task.id}`}
+        </span>
+        <Select
           value={task.status}
           disabled={busy}
-          onChange={(e) => onMove(task.id, e.target.value as TaskStatus)}
-          className="ml-auto min-h-11 rounded-input border border-line bg-surface px-2 text-sm text-ink disabled:opacity-50 sm:min-h-9"
+          onValueChange={(next) => onMove(task.id, next as TaskStatus)}
         >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s === "todo" ? "To do" : s === "doing" ? "Doing" : "Done"}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            aria-labelledby={`move-label-${task.id}`}
+            className="ml-auto h-auto min-h-11 w-auto justify-between rounded-input! border-line bg-surface px-2 text-ink sm:min-h-9"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s === "todo" ? "To do" : s === "doing" ? "Doing" : "Done"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </motion.li>
   );

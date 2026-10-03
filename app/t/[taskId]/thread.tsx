@@ -8,6 +8,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowBendUpLeft, PaperPlaneTilt, Trash } from "@phosphor-icons/react";
 import { apiError } from "@/components/dashboard/api";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const FIELD =
   "min-h-11 w-full rounded-input border border-line bg-surface px-3 py-2 text-base text-ink placeholder:text-muted disabled:opacity-50";
@@ -182,21 +192,49 @@ export function ReplyComposer({ postId }: { postId: string }) {
 
 export function DeleteButton({ url, label }: { url: string; label: string }) {
   const { busy, error, send } = useSend("Could not delete that.");
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="grid justify-items-end gap-1">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          if (!window.confirm(`${label} This cannot be undone.`)) return;
-          void send(url, {}, "DELETE");
-        }}
-        aria-label={label}
-        className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-50 sm:size-9"
-      >
-        <Trash size={20} />
-      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={label}
+            className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-50 sm:size-9"
+          >
+            <Trash size={20} />
+          </button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete?</DialogTitle>
+            <DialogDescription>{label} This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center rounded-pill border border-line bg-surface px-5 text-sm font-medium text-ink hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                void send(url, {}, "DELETE");
+              }}
+              className="inline-flex min-h-11 items-center rounded-pill bg-rose-600 px-5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+            >
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {error ? (
         <p role="alert" className="text-sm text-rose-600">
           {error}

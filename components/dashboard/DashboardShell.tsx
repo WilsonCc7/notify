@@ -11,6 +11,8 @@ import type { Task } from "@/lib/contract";
 import { TaskRow } from "@/components/dashboard/TaskRow";
 import { CountsRow, UpNext } from "@/components/dashboard/Widgets";
 import { CreateTaskForm } from "@/components/dashboard/CreateTaskForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiError } from "@/components/dashboard/api";
 type Tab = "upcoming" | "overdue" | "completed";
 
@@ -168,15 +170,21 @@ export function DashboardShell({ user }: { user: SessionUser }) {
                 <ArrowsClockwise size={20} />
                 {refreshing || pendingSync ? "Refreshing" : "Refresh"}
               </button>
-              <button
-                type="button"
-                onClick={() => void fetch("/api/auth/logout", { method: "POST" }).finally(() => location.assign("/"))}
-                aria-label="Sign out"
-                title="Sign out"
-                className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-ink sm:size-10"
-              >
-                <SignOut size={20} />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void fetch("/api/auth/logout", { method: "POST" }).finally(() => location.assign("/"))}
+                      aria-label="Sign out"
+                      className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-ink sm:size-10"
+                    >
+                      <SignOut size={20} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Sign out</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {user.avatar ? (
                 <img src={user.avatar} alt="" className="size-10 shrink-0 rounded-pill object-cover" />
               ) : (
@@ -274,44 +282,42 @@ export function DashboardShell({ user }: { user: SessionUser }) {
           <FadeRise delay={0.12} className={CARD}>
             <h2 className="text-lg font-semibold text-ink">To do</h2>
 
-            <div role="group" aria-label="Filter tasks by status" className="flex flex-wrap gap-2">
-              {TABS.map(({ id, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={tab === id}
-                  onClick={() => setTab(id)}
-                  className={`min-h-11 rounded-pill px-4 text-sm font-medium transition-colors ${tab === id
-                    ? "bg-accent text-white"
-                    : "border border-line bg-surface text-muted hover:bg-zinc-50"
-                    }`}
-                >
-                  {label}
-                  {tasks ? ` (${lists[id].length})` : ""}
-                </button>
-              ))}
-            </div>
-
-            {tasks === null ? (
-              <Skeleton rows={3} />
-            ) : (
-              <motion.div
-                key={tab}
-                initial={{ opacity: reduced ? 1 : 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.12, ease: "linear" }}
-              >
-                {lists[tab].length === 0 ? (
-                  <EmptyState tab={tab} />
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="grid gap-4">
+              <TabsList aria-label="Filter tasks by status" className="h-auto w-full flex-wrap justify-start gap-2 rounded-pill bg-transparent p-0">
+                {TABS.map(({ id, label }) => (
+                  <TabsTrigger
+                    key={id}
+                    value={id}
+                    className="min-h-11 rounded-pill! border border-line bg-surface px-4 text-sm font-medium text-muted transition-colors hover:bg-zinc-50 data-[state=active]:border-accent data-[state=active]:bg-accent data-[state=active]:text-white data-[state=active]:shadow-none"
+                  >
+                    {label}
+                    {tasks ? ` (${lists[id].length})` : ""}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <TabsContent value={tab} className="mt-0">
+                {tasks === null ? (
+                  <Skeleton rows={3} />
                 ) : (
-                  <ul className="divide-y divide-zinc-100">
-                    {lists[tab].map((t) => (
-                      <TaskRow key={t.id} task={t} onChange={load} />
-                    ))}
-                  </ul>
+                  <motion.div
+                    key={tab}
+                    initial={{ opacity: reduced ? 1 : 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.12, ease: "linear" }}
+                  >
+                    {lists[tab].length === 0 ? (
+                      <EmptyState tab={tab} />
+                    ) : (
+                      <ul className="divide-y divide-zinc-100">
+                        {lists[tab].map((t) => (
+                          <TaskRow key={t.id} task={t} onChange={load} />
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
                 )}
-              </motion.div>
-            )}
+              </TabsContent>
+            </Tabs>
           </FadeRise>
         </div>
       </div>

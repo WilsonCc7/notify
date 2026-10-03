@@ -4,6 +4,29 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { CheckCircle, Circle, EnvelopeSimple, Trash } from "@phosphor-icons/react";
 import { AssignmentFile, ClassroomCap } from "@/components/icons/TaskGlyphs";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Task, TaskSource, TaskStatus } from "@/lib/contract";
 import { apiError } from "@/components/dashboard/api";
 
@@ -13,6 +36,8 @@ function SourceGlyph({ source }: { source: TaskSource }) {
 }
 
 const STATUSES: TaskStatus[] = ["todo", "doing", "done"];
+
+const STATUS_LABEL: Record<TaskStatus, string> = { todo: "To do", doing: "Doing", done: "Done" };
 
 // Due dates are date-only (UTC midnight, see parseDue in the route), so read the chip
 // back in UTC. Formatting in local time would show Oct 4 for anyone west of Greenwich.
@@ -28,6 +53,7 @@ export function TaskRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const reduced = useReducedMotion();
 
@@ -43,15 +69,19 @@ export function TaskRow({
         ? "bg-zinc-100 text-zinc-600"
         : "bg-zinc-100 text-muted";
 
-  async function run(send: () => Promise<Response>, fallback: string) {
+  // Resolves false on failure so callers that own transient UI (the delete
+  // dialog) hold it open with the error visible.
+  async function run(send: () => Promise<Response>, fallback: string): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       const res = await send();
       if (!res.ok) throw new Error(await apiError(res, fallback));
       await onChange();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : fallback);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -68,12 +98,12 @@ export function TaskRow({
       "Could not update that task.",
     );
 
-  const remove = () => {
-    if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
-    run(
+  const remove = async () => {
+    const ok = await run(
       () => fetch(`/api/tasks?id=${encodeURIComponent(task.id)}`, { method: "DELETE" }),
       "Could not delete that task.",
     );
+    if (ok) setConfirming(false);
   };
 
   return (
@@ -131,46 +161,86 @@ export function TaskRow({
           </span>
         ) : null}
 
-        <label className="sr-only" htmlFor={`status-${task.id}`}>
-          Status for {task.title}
-        </label>
-        <select
-          id={`status-${task.id}`}
-          value={task.status}
-          disabled={busy}
-          onChange={(e) => move(e.target.value as TaskStatus)}
-          className="min-h-11 rounded-input border border-line bg-surface px-2 text-sm text-ink disabled:opacity-50 sm:min-h-9"
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s === "todo" ? "To do" : s === "doing" ? "Doing" : "Done"}
-            </option>
-          ))}
-        </select>
+        <Select value={task.status} onValueChange={(v) => move(v as TaskStatus)}>
+          <SelectTrigger
+            disabled={busy}
+            aria-label={`Status for ${task.title}`}
+            className="min-h-11 w-auto rounded-input! border-line bg-surface px-2 text-sm text-ink disabled:opacity-50 sm:min-h-9"
+          >
+            <SelectValue>{STATUS_LABEL[task.status]}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <a
-          href={`https://mail.google.com/mail/u/0/#search/${encodeURIComponent(task.title)}`}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={`Search Gmail for ${task.title}`}
-          title="Search Gmail"
-          className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-accent sm:size-9"
-        >
-          <EnvelopeSimple size={20} />
-        </a>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href={`https://mail.google.com/mail/u/0/#search/${encodeURIComponent(task.title)}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`Search Gmail for ${task.title}`}
+                className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-accent sm:size-9"
+              >
+                <EnvelopeSimple size={20} />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>Search Gmail</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-        <button
-          type="button"
-          onClick={remove}
-          disabled={busy}
-          aria-label={`Delete ${task.title}`}
-          className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-50 sm:size-9"
-        >
-          <Trash size={20} />
-        </button>
+        <Dialog open={confirming} onOpenChange={setConfirming}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              disabled={busy}
+              aria-label={`Delete ${task.title}`}
+              className="grid size-11 place-items-center rounded-pill text-muted hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-50 sm:size-9"
+            >
+              <Trash size={20} />
+            </button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete this task?</DialogTitle>
+              <DialogDescription>
+                &quot;{task.title}&quot; is removed for everyone in the group. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {error ? (
+              <p role="alert" className="text-sm text-rose-600">
+                {error}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-input! border border-line bg-surface px-4 text-sm font-medium text-muted transition-colors hover:bg-zinc-50 sm:min-h-9"
+                >
+                  Cancel
+                </button>
+              </DialogClose>
+              <button
+                type="button"
+                onClick={remove}
+                disabled={busy}
+                className="min-h-11 rounded-input! bg-destructive px-4 text-sm font-medium text-white transition-colors hover:bg-destructive/90 active:scale-[0.98] disabled:opacity-60 sm:min-h-9"
+              >
+                {busy ? "Deleting" : "Delete"}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {error ? (
+      {error && !confirming ? (
         <p role="alert" className="col-span-2 col-start-2 text-sm text-rose-600">
           {error}
         </p>
