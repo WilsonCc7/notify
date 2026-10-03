@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useState, type ComponentType } from "react";
 
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowsClockwise, GoogleLogo, SignOut } from "@phosphor-icons/react";
+import { ArrowsClockwise, GoogleLogo, MagnifyingGlass, SignOut } from "@phosphor-icons/react";
 import { FadeRise } from "@/components/landing/FadeRise";
 import { CompletedArt, OverdueArt, UpcomingArt } from "@/components/icons/EmptyArt";
 import type { SessionUser } from "@/lib/session";
 import type { Task } from "@/lib/contract";
 import { TaskRow } from "@/components/dashboard/TaskRow";
 import { CountsRow, UpNext } from "@/components/dashboard/Widgets";
-import { CreateTaskForm } from "@/components/dashboard/CreateTaskForm";
+import { QuickAdd } from "@/components/dashboard/QuickAdd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiError } from "@/components/dashboard/api";
@@ -40,6 +41,21 @@ function EmptyState({ tab }: { tab: Tab }) {
     <div className="grid justify-items-center gap-3">
       <Art className="h-24 w-auto" />
       <p className="text-base leading-relaxed text-muted">{EMPTY[tab]}</p>
+      {tab === "upcoming" ? (
+        <a
+          href="#quickadd"
+          onClick={(e) => {
+            // Plain fragment nav to a non focusable target blurs the input we just
+            // focused, so scroll by hand and keep the caret in the title field.
+            e.preventDefault();
+            document.getElementById("quickadd")?.scrollIntoView({ block: "center" });
+            document.getElementById("quickadd-title")?.focus();
+          }}
+          className="inline-flex min-h-11 items-center rounded-pill bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent/90 sm:min-h-10"
+        >
+          Add a task
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -48,7 +64,28 @@ const SOON_MS = 48 * 3600 * 1000;
 const CARD =
   "grid content-start gap-4 rounded-card border border-line bg-surface p-5 shadow-[0_1px_2px_rgb(24_24_27/0.04),0_8px_24px_rgb(24_24_27/0.06)]";
 
+const NAV: { href: string; label: string }[] = [
+  { href: "/s", label: "Boards" },
+  { href: "/calendar", label: "Calendar" },
+  { href: "#due", label: "Due soon" },
+];
+
+const NAV_PILL =
+  "inline-flex min-h-10 items-center rounded-pill border border-line bg-surface px-4 text-sm font-medium text-muted transition-colors hover:bg-zinc-50 hover:text-ink";
+
 const dueTime = (t: Task) => (t.dueAt ? new Date(t.dueAt).getTime() : null);
+
+// High priority first, then soonest due, undated last. Overdue tasks sort by the
+// same rule; the merged list only regroups them at the top.
+function byPriority(a: Task, b: Task) {
+  if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
+  const da = dueTime(a);
+  const db = dueTime(b);
+  if (da === null && db === null) return 0;
+  if (da === null) return 1;
+  if (db === null) return -1;
+  return da - db;
+}
 
 function Skeleton({ rows }: { rows: number }) {
   return (
@@ -69,6 +106,7 @@ export function DashboardShell({ user }: { user: SessionUser }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<Tab>("upcoming");
+  const [query, setQuery] = useState("");
   const [pendingSync, setPendingSync] = useState(false);
   const reduced = useReducedMotion();
 
@@ -121,27 +159,52 @@ export function DashboardShell({ user }: { user: SessionUser }) {
 
   const now = Date.now();
   const all = tasks ?? [];
-  const dueSoon = all
-    .filter((t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! - now < SOON_MS)
-    .slice(0, 5);
   const due48Count = all.filter(
     (t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! - now >= 0 && dueTime(t)! - now < SOON_MS,
   ).length;
+  // One merged "To do": overdue rows lead (TaskRow already paints their rose dot and
+  // pulse), each half ordered by byPriority. The Overdue tab stays as a filter.
+  const overdue = all
+    .filter((t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! < now)
+    .sort(byPriority);
+  const notYetDue = all
+    .filter((t) => t.status !== "done" && (dueTime(t) === null || dueTime(t)! >= now))
+    .sort(byPriority);
   const lists: Record<Tab, Task[]> = {
-    upcoming: all.filter((t) => t.status !== "done" && (dueTime(t) === null || dueTime(t)! >= now)),
-    overdue: all.filter((t) => t.status !== "done" && dueTime(t) !== null && dueTime(t)! < now),
-    completed: all.filter((t) => t.status === "done"),
+    upcoming: [...overdue, ...notYetDue],
+    overdue,
+    completed: all.filter((t) => t.status === "done").sort(byPriority),
   };
+
+  const q = query.trim().toLowerCase();
+  const matches = (t: Task) =>
+    t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q);
+  const visible: Record<Tab, Task[]> = {
+    upcoming: q ? lists.upcoming.filter(matches) : lists.upcoming,
+    overdue: q ? lists.overdue.filter(matches) : lists.overdue,
+    completed: q ? lists.completed.filter(matches) : lists.completed,
+  };
+
   const undone = all.filter((t) => t.status !== "done");
-  const upNext =
-    undone.slice().sort((a, b) => {
-      const da = dueTime(a);
-      const db = dueTime(b);
-      if (da === null && db === null) return 0;
-      if (da === null) return 1;
-      if (db === null) return -1;
-      return da - db;
-    })[0] ?? null;
+  // UTC Monday boundary. completedAt is set on the flip to done, so the tile counts
+  // tasks finished since the week started, not all-time completions.
+  const weekStart = new Date();
+  weekStart.setUTCHours(0, 0, 0, 0);
+  weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
+  const doneWeek = lists.completed.filter(
+    (t) => t.completedAt !== null && new Date(t.completedAt) >= weekStart,
+  ).length;
+
+  // Earliest due date in the overdue set. Due dates are date-only (UTC midnight, see
+  // parseDue in the tasks route), so format in UTC or it reads a day early west of Greenwich.
+  const oldest = overdue.reduce<Task | null>(
+    (a, t) => (a === null || dueTime(t)! < dueTime(a)! ? t : a),
+    null,
+  );
+  const oldestDay = oldest?.dueAt
+    ? new Date(oldest.dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+    : "";
+  const upNext = undone.slice().sort(byPriority)[0] ?? null;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -206,6 +269,20 @@ export function DashboardShell({ user }: { user: SessionUser }) {
               {today}
             </p>
           </div>
+
+          <nav aria-label="Sections" className="flex flex-wrap items-center gap-2">
+            {NAV.map(({ href, label }) =>
+              href.startsWith("#") ? (
+                <a key={href} href={href} className={NAV_PILL}>
+                  {label}
+                </a>
+              ) : (
+                <Link key={href} href={href} className={NAV_PILL}>
+                  {label}
+                </Link>
+              ),
+            )}
+          </nav>
         </FadeRise>
 
         {tasks === null ? (
@@ -213,7 +290,7 @@ export function DashboardShell({ user }: { user: SessionUser }) {
         ) : (
           <FadeRise delay={0.015} className="grid gap-6 lg:grid-cols-2">
             <UpNext task={upNext} />
-            <CountsRow todo={undone.length} due48={due48Count} done={lists.completed.length} />
+            <CountsRow todo={undone.length} due48={due48Count} done={lists.completed.length} doneWeek={doneWeek} />
           </FadeRise>
         )}
 
@@ -240,7 +317,7 @@ export function DashboardShell({ user }: { user: SessionUser }) {
 
         <FadeRise delay={0.06} className={`${CARD} gap-5`}>
           <h2 className="text-lg font-semibold text-ink">New task</h2>
-          <CreateTaskForm onCreated={load} />
+          <QuickAdd onCreated={load} />
         </FadeRise>
 
         {error ? (
@@ -255,71 +332,89 @@ export function DashboardShell({ user }: { user: SessionUser }) {
           </p>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <FadeRise delay={0.09} className={`${CARD} border-l-2 border-l-sky-500`}>
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-ink">Due soon</h2>
-              <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
-                Next 48h
-              </span>
-            </div>
-
-            {tasks === null ? (
-              <Skeleton rows={4} />
-            ) : dueSoon.length === 0 ? (
-              <p className="text-base leading-relaxed text-muted">
-                Nothing due in the next two days. Add one with the form above.
-              </p>
-            ) : (
-              <ul className="divide-y divide-zinc-100">
-                {dueSoon.map((t) => (
-                  <TaskRow key={t.id} task={t} onChange={load} />
-                ))}
-              </ul>
-            )}
+        {tasks !== null && overdue.length > 0 ? (
+          <FadeRise
+            delay={0.09}
+            className="grid gap-3 rounded-card border border-rose-200 bg-rose-50/50 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+          >
+            <p className="text-base leading-relaxed text-rose-700">
+              {overdue.length} overdue, oldest: {oldest?.title} ({oldestDay}).
+            </p>
+            <button
+              type="button"
+              onClick={() => setTab("overdue")}
+              className="inline-flex min-h-11 items-center justify-self-start rounded-pill border border-rose-200 bg-surface px-5 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 sm:min-h-10 sm:justify-self-end"
+            >
+              Review overdue
+            </button>
           </FadeRise>
+        ) : null}
 
-          <FadeRise delay={0.12} className={CARD}>
-            <h2 className="text-lg font-semibold text-ink">To do</h2>
+        <FadeRise delay={0.12} className={`${CARD}`}>
+          <h2 id="due" className="scroll-mt-8 text-lg font-semibold text-ink">
+            To do
+          </h2>
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="grid gap-4">
-              <TabsList aria-label="Filter tasks by status" className="h-auto w-full flex-wrap justify-start gap-2 rounded-pill bg-transparent p-0">
-                {TABS.map(({ id, label }) => (
-                  <TabsTrigger
-                    key={id}
-                    value={id}
-                    className="min-h-11 rounded-pill! border border-line bg-surface px-4 text-sm font-medium text-muted transition-colors hover:bg-zinc-50 data-[state=active]:border-accent data-[state=active]:bg-accent data-[state=active]:text-white data-[state=active]:shadow-none"
-                  >
-                    {label}
-                    {tasks ? ` (${lists[id].length})` : ""}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <TabsContent value={tab} className="mt-0">
-                {tasks === null ? (
-                  <Skeleton rows={3} />
-                ) : (
-                  <motion.div
-                    key={tab}
-                    initial={{ opacity: reduced ? 1 : 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.12, ease: "linear" }}
-                  >
-                    {lists[tab].length === 0 ? (
+          <div className="relative">
+            <MagnifyingGlass
+              size={20}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <label htmlFor="task-search" className="sr-only">
+              Search tasks
+            </label>
+            <input
+              id="task-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tasks"
+              className="min-h-11 w-full rounded-input border border-line bg-surface pl-10 pr-3 text-base text-ink placeholder:text-muted"
+            />
+          </div>
+
+          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="grid gap-4">
+            <TabsList aria-label="Filter tasks by status" className="h-auto w-full flex-wrap justify-start gap-2 rounded-pill bg-transparent p-0">
+              {TABS.map(({ id, label }) => (
+                <TabsTrigger
+                  key={id}
+                  value={id}
+                  className="min-h-11 rounded-pill! border border-line bg-surface px-4 text-sm font-medium text-muted transition-colors hover:bg-zinc-50 data-[state=active]:border-accent data-[state=active]:bg-accent data-[state=active]:text-white data-[state=active]:shadow-none"
+                >
+                  {label}
+                  {tasks ? ` (${visible[id].length})` : ""}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <TabsContent value={tab} className="mt-0">
+              {tasks === null ? (
+                <Skeleton rows={3} />
+              ) : (
+                <motion.div
+                  key={tab}
+                  initial={{ opacity: reduced ? 1 : 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.12, ease: "linear" }}
+                >
+                  {visible[tab].length === 0 ? (
+                    lists[tab].length === 0 ? (
                       <EmptyState tab={tab} />
                     ) : (
-                      <ul className="divide-y divide-zinc-100">
-                        {lists[tab].map((t) => (
-                          <TaskRow key={t.id} task={t} onChange={load} />
-                        ))}
-                      </ul>
-                    )}
-                  </motion.div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </FadeRise>
-        </div>
+                      <p className="text-base leading-relaxed text-muted">No tasks match {q}.</p>
+                    )
+                  ) : (
+                    <ul className="divide-y divide-zinc-100">
+                      {visible[tab].map((t) => (
+                        <TaskRow key={t.id} task={t} onChange={load} />
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </FadeRise>
       </div>
     </div>
   );

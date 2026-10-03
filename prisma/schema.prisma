@@ -43,6 +43,7 @@ model tasks {
   title                    String
   description              String?
   dueAt                    DateTime?
+  priority                 String      @default("normal") // "normal" | "high" — per-task flag, see lib/contract.ts TaskPriority
   createdAt                DateTime    @default(now())
   task_state               task_state[]
   posts                    posts[]
@@ -54,6 +55,7 @@ model task_state {
   user    users    @relation(fields: [userId], references: [id], onDelete: Cascade)
   task    tasks    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   status  String // "todo" | "doing" | "done" — see lib/contract.ts TaskStatus
+  completedAt DateTime? // set when status flips to done, cleared otherwise; powers done-this-week
 
   @@id([userId, taskId])
 }

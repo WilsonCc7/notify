@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { CheckCircle, Circle, EnvelopeSimple, Trash } from "@phosphor-icons/react";
+import { ChatCircle, CheckCircle, Circle, EnvelopeSimple, Flag, Trash } from "@phosphor-icons/react";
 import { AssignmentFile, ClassroomCap } from "@/components/icons/TaskGlyphs";
 import {
   Dialog,
@@ -58,6 +59,7 @@ export function TaskRow({
   const reduced = useReducedMotion();
 
   const done = task.status === "done";
+  const high = task.priority === "high";
   const due = task.dueAt ? new Date(task.dueAt) : null;
   const overdue = due !== null && !done && due.getTime() < Date.now();
   const soon = due !== null && !done && !overdue && due.getTime() - Date.now() < 48 * 3600 * 1000;
@@ -96,6 +98,17 @@ export function TaskRow({
           body: JSON.stringify({ id: task.id, status }),
         }),
       "Could not update that task.",
+    );
+
+  const togglePriority = () =>
+    run(
+      () =>
+        fetch("/api/tasks", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: task.id, priority: high ? "normal" : "high" }),
+        }),
+      "Could not update priority.",
     );
 
   const remove = async () => {
@@ -141,6 +154,15 @@ export function TaskRow({
       </div>
 
       <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-auto">
+        {task.courseLabel ? (
+          <span
+            title={task.courseLabel}
+            className="inline-flex max-w-28 items-center truncate rounded-pill bg-zinc-100 px-2.5 py-1 text-xs font-medium text-muted"
+          >
+            {task.courseLabel}
+          </span>
+        ) : null}
+
         {task.dueAt ? (
           <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium ${tone}`}>
             {overdue ? (
@@ -161,6 +183,23 @@ export function TaskRow({
           </span>
         ) : null}
 
+        {high ? (
+          <span className="inline-flex items-center rounded-pill bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+            High
+          </span>
+        ) : null}
+
+        {task.replyCount > 0 ? (
+          <Link
+            href={`/t/${task.id}`}
+            aria-label={`Discuss ${task.title} (${task.replyCount} replies)`}
+            className="inline-flex items-center gap-1.5 rounded-pill bg-zinc-100 px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-accent"
+          >
+            <ChatCircle size={16} />
+            {task.replyCount}
+          </Link>
+        ) : null}
+
         <Select value={task.status} onValueChange={(v) => move(v as TaskStatus)}>
           <SelectTrigger
             disabled={busy}
@@ -177,6 +216,22 @@ export function TaskRow({
             ))}
           </SelectContent>
         </Select>
+
+        <button
+          type="button"
+          onClick={togglePriority}
+          disabled={busy}
+          aria-pressed={high}
+          aria-label={`Mark "${task.title}" as ${high ? "normal" : "high"} priority`}
+          title={high ? "Mark normal priority" : "Mark high priority"}
+          className={`grid size-11 place-items-center rounded-pill transition-colors disabled:opacity-50 sm:size-9 ${
+            high
+              ? "text-rose-600 hover:bg-rose-50"
+              : "text-muted hover:bg-zinc-100 hover:text-accent"
+          }`}
+        >
+          <Flag size={20} weight={high ? "fill" : "regular"} />
+        </button>
 
         <TooltipProvider>
           <Tooltip>

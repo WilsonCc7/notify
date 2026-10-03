@@ -2,6 +2,7 @@
 
 export type TaskSource = "classroom" | "custom";
 export type TaskStatus = "todo" | "doing" | "done";
+export type TaskPriority = "normal" | "high";
 
 export type Task = {
   id: string;
@@ -13,6 +14,9 @@ export type Task = {
   description?: string;
   dueAt?: string | null;
   status: TaskStatus; // per-user resolved
+  priority: TaskPriority;
+  completedAt: string | null; // per-user done stamp from task_state, powers done-this-week
+  replyCount: number; // posts on the thread, for the row badge
 };
 
 export type Course = {

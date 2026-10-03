@@ -5,7 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
-import type { Task, TaskSource, TaskStatus } from "@/lib/contract";
+import type { Task, TaskPriority, TaskSource, TaskStatus } from "@/lib/contract";
 import { Board } from "./board";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,9 @@ type Row = {
   title: string;
   description: string | null;
   dueAt: Date | null;
-  task_state: { status: string }[];
+  priority: string;
+  task_state: { status: string; completedAt: Date | null }[];
+  _count: { posts: number };
 };
 
 // Same mapper as app/api/tasks/route.ts, copied so this page does not import a route handler.
@@ -41,6 +43,9 @@ const toTask = (r: Row): Task => ({
   description: r.description ?? undefined,
   dueAt: r.dueAt ? r.dueAt.toISOString() : null,
   status: (r.task_state[0]?.status as TaskStatus | undefined) ?? "todo",
+  priority: (r.priority as TaskPriority | undefined) ?? "normal",
+  completedAt: r.task_state[0]?.completedAt ? r.task_state[0].completedAt.toISOString() : null,
+  replyCount: r._count.posts,
 });
 
 export default async function BoardPage({ params }: { params: Promise<{ course: string }> }) {
@@ -63,10 +68,10 @@ export default async function BoardPage({ params }: { params: Promise<{ course: 
 
   const rows = valid
     ? await prisma.tasks.findMany({
-        where: unfiled ? { courseLabel: null } : { courseLabel: label },
-        include: { task_state: { where: { userId: user.id } } },
-        orderBy: { dueAt: { sort: "asc", nulls: "last" } },
-      })
+      where: unfiled ? { courseLabel: null } : { courseLabel: label },
+      include: { task_state: { where: { userId: user.id } }, _count: { select: { posts: true } } },
+      orderBy: { dueAt: { sort: "asc", nulls: "last" } },
+    })
     : [];
 
   const tasks = rows.map(toTask);

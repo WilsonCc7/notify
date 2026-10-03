@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
+import { ChatCircle } from "@phosphor-icons/react";
 import { apiError } from "@/components/dashboard/api";
 import {
   Select,
@@ -78,6 +79,23 @@ function BoardCard({
               timeZone: "UTC",
             })}
           </span>
+        ) : null}
+
+        {task.priority === "high" ? (
+          <span className="inline-flex items-center rounded-pill bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+            High
+          </span>
+        ) : null}
+
+        {task.replyCount > 0 ? (
+          <Link
+            href={`/t/${task.id}`}
+            aria-label={`Discuss ${task.title} (${task.replyCount} replies)`}
+            className="inline-flex items-center gap-1.5 rounded-pill bg-zinc-100 px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-accent"
+          >
+            <ChatCircle size={16} />
+            {task.replyCount}
+          </Link>
         ) : null}
 
         <span id={`move-label-${task.id}`} className="sr-only">

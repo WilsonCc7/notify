@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
-import type { Task, TaskSource, TaskStatus } from "@/lib/contract";
+import type { Task, TaskPriority, TaskSource, TaskStatus } from "@/lib/contract";
 
 export const dynamic = "force-dynamic";
 
 const STATUSES: TaskStatus[] = ["todo", "doing", "done"];
+const PRIORITIES: TaskPriority[] = ["normal", "high"];
 
 type Row = {
   id: string;
@@ -16,7 +17,9 @@ type Row = {
   title: string;
   description: string | null;
   dueAt: Date | null;
-  task_state: { status: string }[];
+  priority: string;
+  task_state: { status: string; completedAt: Date | null }[];
+  _count: { posts: number };
 };
 
 // LEFT JOIN task_state in Prisma terms: the per-user state row when it exists, else todo.
@@ -30,6 +33,9 @@ const toTask = (r: Row): Task => ({
   description: r.description ?? undefined,
   dueAt: r.dueAt ? r.dueAt.toISOString() : null,
   status: (r.task_state[0]?.status as TaskStatus | undefined) ?? "todo",
+  priority: (r.priority as TaskPriority | undefined) ?? "normal",
+  completedAt: r.task_state[0]?.completedAt ? r.task_state[0].completedAt.toISOString() : null,
+  replyCount: r._count.posts,
 });
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
@@ -45,6 +51,10 @@ async function body(req: Request): Promise<Record<string, unknown>> {
 
 function isStatus(v: unknown): v is TaskStatus {
   return typeof v === "string" && (STATUSES as string[]).includes(v);
+}
+
+function isPriority(v: unknown): v is TaskPriority {
+  return typeof v === "string" && (PRIORITIES as string[]).includes(v);
 }
 
 // Accepts ISO stamps and the bare YYYY-MM-DD that <input type="date"> sends. UTC midnight
@@ -64,9 +74,11 @@ function parseDue(v: unknown): Date | null | "bad" {
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return fail("Not signed in.", 401);
-
   const rows = await prisma.tasks.findMany({
-    include: { task_state: { where: { userId: user.id } } },
+    include: {
+      task_state: { where: { userId: user.id } },
+      _count: { select: { posts: true } },
+    },
     orderBy: { dueAt: { sort: "asc", nulls: "last" } },
   });
 
@@ -93,6 +105,8 @@ export async function POST(req: Request) {
   // Free text typed by the user. Blank collapses to null so the board's "Unfiled"
   // bucket stays a single is-null query instead of an empty-string special case.
   const courseLabel = typeof b.courseLabel === "string" ? b.courseLabel.trim() || null : null;
+  if (b.priority !== undefined && !isPriority(b.priority)) return fail("Priority must be normal or high.", 400);
+  const priority: TaskPriority = b.priority === "high" ? "high" : "normal";
 
   const row = await prisma.tasks.create({
     data: {
@@ -102,9 +116,13 @@ export async function POST(req: Request) {
       dueAt,
       courseId,
       courseLabel,
+      priority,
       task_state: { create: { userId: user.id, status: "todo" } },
     },
-    include: { task_state: { where: { userId: user.id } } },
+    include: {
+      task_state: { where: { userId: user.id } },
+      _count: { select: { posts: true } },
+    },
   });
 
   return NextResponse.json(toTask(row), { status: 201 });
@@ -118,7 +136,10 @@ export async function PATCH(req: Request) {
   const id = typeof b.id === "string" ? b.id : "";
   if (!id) return fail("Missing task id.", 400);
   if (b.status !== undefined && !isStatus(b.status)) return fail("Status must be todo, doing, or done.", 400);
-  if (b.status === undefined && b.courseLabel === undefined) return fail("Nothing to update.", 400);
+  if (b.priority !== undefined && !isPriority(b.priority))
+    return fail("Priority must be normal or high.", 400);
+  if (b.status === undefined && b.courseLabel === undefined && b.priority === undefined)
+    return fail("Nothing to update.", 400);
 
   const task = await prisma.tasks.findUnique({
     where: { id },
@@ -129,22 +150,29 @@ export async function PATCH(req: Request) {
   if (b.status !== undefined) {
     await prisma.task_state.upsert({
       where: { userId_taskId: { userId: user.id, taskId: id } },
-      create: { userId: user.id, taskId: id, status: b.status },
-      update: { status: b.status },
+      create: { userId: user.id, taskId: id, status: b.status, completedAt: b.status === "done" ? new Date() : null },
+      update: { status: b.status, completedAt: b.status === "done" ? new Date() : null },
     });
   }
 
+  const patch: { courseLabel?: string | null; priority?: string } = {};
   if (b.courseLabel !== undefined) {
     // Same trim rule as POST: blank unfiles the task.
-    await prisma.tasks.update({
-      where: { id },
-      data: { courseLabel: typeof b.courseLabel === "string" ? b.courseLabel.trim() || null : null },
-    });
+    patch.courseLabel = typeof b.courseLabel === "string" ? b.courseLabel.trim() || null : null;
+  }
+  if (b.priority !== undefined) {
+    patch.priority = b.priority;
+  }
+  if (Object.keys(patch).length > 0) {
+    await prisma.tasks.update({ where: { id }, data: patch });
   }
 
   const row = await prisma.tasks.findUniqueOrThrow({
     where: { id },
-    include: { task_state: { where: { userId: user.id } } },
+    include: {
+      task_state: { where: { userId: user.id } },
+      _count: { select: { posts: true } },
+    },
   });
 
   return NextResponse.json(toTask(row));

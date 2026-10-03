@@ -54,7 +54,22 @@ export function UpNext({ task }: { task: Task | null }) {
     <section className={CARD} aria-label="Up next">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-ink">Up next</h2>
-        <DueChip dueAt={task.dueAt} />
+        <div className="flex min-w-0 items-center gap-2">
+          {task.courseLabel ? (
+            <span
+              title={task.courseLabel}
+              className="inline-flex max-w-28 items-center truncate rounded-pill bg-zinc-100 px-2.5 py-1 text-xs font-medium text-muted"
+            >
+              {task.courseLabel}
+            </span>
+          ) : null}
+          {task.priority === "high" ? (
+            <span className="inline-flex shrink-0 items-center rounded-pill bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+              High
+            </span>
+          ) : null}
+          <DueChip dueAt={task.dueAt} />
+        </div>
       </div>
       <p className="flex items-center gap-2 text-base text-ink">
         <Glyph size={18} className="shrink-0 text-muted" />
@@ -67,14 +82,15 @@ export function UpNext({ task }: { task: Task | null }) {
   );
 }
 
-export function CountsRow({ todo, due48, done }: { todo: number; due48: number; done: number }) {
+export function CountsRow({ todo, due48, done, doneWeek }: { todo: number; due48: number; done: number; doneWeek: number }) {
   const tiles = [
     { label: "To do", value: todo, dot: "bg-sky-500" },
     { label: "Due in 48h", value: due48, dot: "bg-amber-500" },
     { label: "Done", value: done, dot: "bg-emerald-500" },
+    { label: "Done this week", value: doneWeek, dot: "bg-emerald-300" },
   ];
   return (
-    <section className="grid grid-cols-3 gap-4" aria-label="Task counts">
+    <section className="grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="Task counts">
       {tiles.map((t) => (
         <div
           key={t.label}
